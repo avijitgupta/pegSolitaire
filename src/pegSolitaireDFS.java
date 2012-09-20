@@ -204,7 +204,7 @@ class DFSLauncher {
 
 public class pegSolitaireDFS {
 	static int N = 7;
-	public static void main(String args[]) throws Exception
+	public void runPegSolitaireDFS() throws Exception
 	{
 		String input[]= new String[N];
 		for(int i = 0 ; i < N ; i ++)
