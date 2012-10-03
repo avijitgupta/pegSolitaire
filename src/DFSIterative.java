@@ -1,13 +1,11 @@
 import java.io.DataInputStream;
 import java.io.FileInputStream;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.PriorityQueue;
 import java.util.Stack;
 
-public class AStarSolution {
+public class DFSIterative {
 
   private char [][]board;
   private static int N;
@@ -18,25 +16,56 @@ public class AStarSolution {
 
   boolean traceVerbose;
   private boolean gameOver = false;
-  private Stack <PushedData> moveStack;
-  private Stack <String> winningMove;
+  private Stack <PushedGameState> moveStack;
+
   private int nodeVisited;
   private Map<String, Integer> coordinatesToPos;
 
+
+  /*
+   * Parse input string in Board data structure
+   */
+  public DFSIterative(int n, String input, String verbose) {
+    N = n;
+    board = new char[N][N];
+
+    coordinatesToPos = new HashMap<String, Integer>();
+    traceVerbose = Boolean.parseBoolean(verbose);
+    moveStack = new Stack<PushedGameState>();
+    nodeVisited = 0;
+
+    mapCoordinates();
+
+    int check = 0;
+    int counter = 0;
+    for(int i=0; i<input.length(); i++)
+    {
+      if(check> 16)
+        break;
+      if(input.charAt(i) == UNUSABLE || input.charAt(i) == EMPTY 
+          || input.charAt(i) == FILLED) {
+        board[counter/N][counter%N] = input.charAt(i);
+        counter++;
+      }
+      if(input.charAt(i)== UNUSABLE)
+        check++;
+    } 
+  }
+  
   /*
    * a helper class to keep track of Stack
    */
-  private class PushedData implements Comparable<PushedData>{
+  private class PushedGameState implements Comparable<PushedGameState>{
     char [][]pushed_board;
-    int depth;
     String move;
     int cordinates_i;
     int cordinates_j;
     char direction;
     int distance;
+    String winningMoves;
 
-    public PushedData(char [][]board, String Str, 
-        char dir, int matrix_i, int matrix_j, int d) {
+    public PushedGameState(char [][]board, String Str, 
+        char dir, int matrix_i, int matrix_j, String setOfMoves) {
 
       pushed_board = new char[N][N];
       for(int i=0; i<N; i++)  {
@@ -47,8 +76,8 @@ public class AStarSolution {
       cordinates_i = matrix_i;
       cordinates_j = matrix_j;
       direction = dir;
-      depth = d;
       move = Str;
+      winningMoves = setOfMoves;
 
       int final_i =0;
       int final_j =0;
@@ -70,43 +99,13 @@ public class AStarSolution {
         final_j = matrix_j+2;
       }
 
-      distance = AStarSolution.calculateL1Norm(final_i, final_j);
+      distance = DFSIterative.calculateL1Norm(final_i, final_j);
     }
 
     @Override
-    public int compareTo(PushedData o) {
+    public int compareTo(PushedGameState o) {
       return  o.distance - this.distance;
     }
-  }
-
-  /*
-   * Parse input string in Board data structure
-   */
-  public AStarSolution(int n, String input, String verbose) {
-    N = n;
-    board = new char[N][N];
-    coordinatesToPos = new HashMap<String, Integer>();
-
-    traceVerbose = Boolean.parseBoolean(verbose);
-    moveStack = new Stack<PushedData>();
-    winningMove = new Stack<String>();
-    nodeVisited = 0;
-    mapCoordinates();
-
-    int check = 0;
-    int counter = 0;
-    for(int i=0; i<input.length(); i++)
-    {
-      if(check> 16)
-        break;
-      if(input.charAt(i) == UNUSABLE || input.charAt(i) == EMPTY 
-          || input.charAt(i) == FILLED) {
-        board[counter/N][counter%N] = input.charAt(i);
-        counter++;
-      }
-      if(input.charAt(i)== UNUSABLE)
-        check++;
-    } 
   }
 
   /*
@@ -167,13 +166,14 @@ public class AStarSolution {
     nodeVisited++;
   }
 
-  void AStar() {
+  String DFS() {
 
     int initialPos, finalPos;
-    int depth = 0;
+    String setofMoves = "";
+    
     do 
     {
-      ArrayList<PushedData>tempList = new ArrayList<PushedData>();
+      ArrayList<PushedGameState>tempList = new ArrayList<PushedGameState>();
       tempList.clear();
       for(int i=0;i<N;i++)  {
         for(int j=0;j<N;j++)  {
@@ -185,8 +185,8 @@ public class AStarSolution {
             initialPos = coordinatesToPos.get(i+":"+j);
             finalPos = coordinatesToPos.get(i+":"+(j+2));
 
-            PushedData temp = new PushedData(board, initialPos+"->"+finalPos,
-                'R',i,j, depth);
+            PushedGameState temp = new PushedGameState(board, initialPos+"->"+finalPos,
+                'R',i,j, setofMoves);
             tempList.add(temp);
           }
 
@@ -196,8 +196,8 @@ public class AStarSolution {
             initialPos = coordinatesToPos.get(i+":"+j);
             finalPos = coordinatesToPos.get((i+2)+":"+j);
 
-            PushedData temp = new PushedData(board, initialPos+"->"+finalPos,
-                'D',i,j, depth);
+            PushedGameState temp = new PushedGameState(board, initialPos+"->"+finalPos,
+                'D',i,j, setofMoves);
             tempList.add(temp);
           }
 
@@ -207,8 +207,8 @@ public class AStarSolution {
             initialPos = coordinatesToPos.get(i+":"+j);
             finalPos = coordinatesToPos.get(i+":"+(j-2));
 
-            PushedData temp = new PushedData(board, initialPos+"->"+finalPos,
-                'L',i,j, depth);
+            PushedGameState temp = new PushedGameState(board, initialPos+"->"+finalPos,
+                'L',i,j, setofMoves);
             tempList.add(temp);
           }
 
@@ -218,48 +218,40 @@ public class AStarSolution {
             initialPos = coordinatesToPos.get(i+":"+j);
             finalPos = coordinatesToPos.get((i-2)+":"+j);
 
-            PushedData temp = new PushedData(board, initialPos+"->"+finalPos,
-                'U',i,j, depth);
+            PushedGameState temp = new PushedGameState(board, initialPos+"->"+finalPos,
+                'U',i,j, setofMoves);
             tempList.add(temp);
           } 
 
         } // j for
       } // i for
+      
       if(gameWon())  {
         gameOver = true;
-        return;
+        return setofMoves;
       }
-/*      for(PushedData pushedData : tempList) {
-        System.out.println(pushedData.move+": "+pushedData.distance);
-        }
-      System.out.println("**");*/
       
-      
-      //if(tempList.size()<= 4)
-      
-      /*
-      for(PushedData pushedData : tempList) {
-      System.out.println(pushedData.move+": "+pushedData.distance);
+      for(PushedGameState PushedGameState : tempList) {
+        moveStack.push(PushedGameState);
       }
-      System.out.println("**");*/
-      for(PushedData pushedData : tempList) {
-        moveStack.push(pushedData);
-      }
-      PushedData popped = moveStack.pop();
-
-      //if(winningMove.size()!=0 && depth <= popped.depth)
-      //  winningMove.pop();
-      //winningMove.push(popped.move);
+      PushedGameState popped = moveStack.pop();
+      setofMoves = popped.winningMoves;       
       copyBoard(popped);
       move(popped.cordinates_i, popped.cordinates_j, popped.direction);
-      //System.out.println(popped.move);
-
-      depth = popped.depth+1;
+    
+      if(setofMoves =="")
+        setofMoves += popped.move;
+      else
+        setofMoves += ", "+popped.move;
+      if(traceVerbose)  {
+        System.out.println("Next Move: "+ popped.move);
+        System.out.println("Move so far: "+setofMoves);  
+      }
     } while(moveStack.size() !=  0);
-    return;
+    return setofMoves;
   }
 
-  void copyBoard(PushedData data)  {
+  void copyBoard(PushedGameState data)  {
     for(int i=0;i<N;i++)  {
       for(int j=0;j<N;j++)  {
         board[i][j] = data.pushed_board[i][j];
@@ -302,38 +294,41 @@ public class AStarSolution {
         Runtime.getRuntime().freeMemory();
     return (used/1024);
   }
-  
+
   static String readFile(String path)  {
     String inputdata ="";
-    
-      try {
-        FileInputStream fstream = new 
-            FileInputStream(path);
-        DataInputStream in = 
-            new DataInputStream(fstream);
 
-        while (in.available() !=0)  {
-          inputdata+= in.readLine();
-        }
-        in.close();
-      } 
-      catch (Exception e) {
-        System.err.println("File input error");
+    try {
+      FileInputStream fstream = new 
+          FileInputStream(path);
+      DataInputStream in = 
+          new DataInputStream(fstream);
+
+      while (in.available() !=0)  {
+        inputdata+= in.readLine();
       }
-    
-      return inputdata;
+      in.close();
+    } 
+    catch (Exception e) {
+      System.err.println("File input error");
+    }
+
+    return inputdata;
   }
 
   public static void main(String[] args) {
-   
-    String input = AStarSolution.readFile(args[0]);
+
+    String input = DFSIterative.readFile(args[0]);
     long startTime = System.currentTimeMillis();
-    AStarSolution game = new AStarSolution(7, input, args[1]);
+    DFSIterative game = new DFSIterative(7, input, args[1]);
     game.displayBoard();
+    String str ="";
+
     try {
       System.out.println("*****");
-      System.out.println("Intermediate Stack");
-      game.AStar();
+      System.out.println("Intermediate Trace");
+      str = game.DFS();
+      System.out.println(str);
       System.out.println("*****");
     }
     catch(Exception e){ e.printStackTrace(); }
@@ -343,7 +338,7 @@ public class AStarSolution {
       System.out.println("\n***RESULT***\nGame Won!");
       System.out.println("Final Board State:");
       game.displayBoard();
-      System.out.println("Winning sequence: "+game.winningMove+"\n");
+      System.out.println("Winning sequence: "+str+"\n");
     }
     else  {
       System.out.println("\n***RESULT***\nGame Lost!\nSolution doesn't exist");
@@ -351,7 +346,7 @@ public class AStarSolution {
 
     System.out.println("***STATS***");
     System.out.println(endTime - startTime+" milliSeconds");
-    System.out.println("Memory used: "+ AStarSolution.getMemUsed()+
+    System.out.println("Memory used: "+ DFSIterative.getMemUsed()+
         " bytes\nNodes visited: "+game.nodeVisited);
   }
 }

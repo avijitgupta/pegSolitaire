@@ -200,9 +200,9 @@ public class DFSolution {
    * Left, Up, Down and Right
    */
   void DFS() {
-    if(traceVerbose)  {
-      System.out.println(winningMove);
-    }
+    //if(traceVerbose)  {
+     // System.out.println(winningMove);
+    //}
     
     if(gameOver)  {
       return;

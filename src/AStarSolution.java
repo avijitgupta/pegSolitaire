@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
 import java.util.Stack;
 
 public class AStarSolution {
@@ -18,9 +17,9 @@ public class AStarSolution {
 
   boolean traceVerbose;
   private boolean gameOver = false;
-  private Stack <PushedData> moveStack;
-  private HashMap<String, PushedData>old_visited;
-  private Stack <String> winningMove;
+  private Stack <PushedGameState> moveStack;
+  private HashMap<String, PushedGameState>old_visited;
+  
   private int nodeVisited;
   private Map<String, Integer> coordinatesToPos;
   
@@ -33,12 +32,11 @@ public class AStarSolution {
     coordinatesToPos = new HashMap<String, Integer>();
 
     traceVerbose = Boolean.parseBoolean(verbose);
-    moveStack = new Stack<PushedData>();
-    winningMove = new Stack<String>();
+    moveStack = new Stack<PushedGameState>();
     nodeVisited = 0;
     mapCoordinates();
 
-    old_visited = new HashMap<String, AStarSolution.PushedData>();
+    old_visited = new HashMap<String, AStarSolution.PushedGameState>();
     int check = 0;
     int counter = 0;
     for(int i=0; i<input.length(); i++)
@@ -55,21 +53,20 @@ public class AStarSolution {
     } 
   }
   
-  final int LIMIT=4;
-  
   /*
    * a helper class to keep track of Stack
    */
-  private class PushedData implements Comparable<PushedData>{
+  private class PushedGameState implements Comparable<PushedGameState>{
     char [][]pushed_board;
-    int depth;
+    String move;
     int cordinates_i;
     int cordinates_j;
     char direction;
     int distance;
+    String winningMoves;
 
-    public PushedData(char [][]board, String Str, 
-        char dir, int matrix_i, int matrix_j, int d) {
+    public PushedGameState(char [][]board, String Str, 
+        char dir, int matrix_i, int matrix_j, String setOfMoves) {
 
       pushed_board = new char[N][N];
       for(int i=0; i<N; i++)  {
@@ -80,7 +77,8 @@ public class AStarSolution {
       cordinates_i = matrix_i;
       cordinates_j = matrix_j;
       direction = dir;
-      depth = d;
+      move = Str;
+      winningMoves = setOfMoves;
 
       int final_i =0;
       int final_j =0;
@@ -102,12 +100,12 @@ public class AStarSolution {
         final_j = matrix_j+2;
       }
 
-      distance = AStarSolution.calculateL1Norm(final_i, final_j);
+      distance = DFSIterative.calculateL1Norm(final_i, final_j);
     }
 
     @Override
-    public int compareTo(PushedData o) {
-      return  o.distance - distance;
+    public int compareTo(PushedGameState o) {
+      return  o.distance - this.distance;
     }
   }
 
@@ -168,13 +166,14 @@ public class AStarSolution {
     nodeVisited++;
   }
 
-  void AStar() {
+  String AStar() {
 
     int initialPos, finalPos;
-    int depth = 0;
+    String setofMoves = "";
+    
     do 
     {
-      ArrayList<PushedData>tempList = new ArrayList<AStarSolution.PushedData>();
+      ArrayList<PushedGameState>tempList = new ArrayList<AStarSolution.PushedGameState>();
       for(int i=0;i<N;i++)  {
         for(int j=0;j<N;j++)  {
 
@@ -185,8 +184,8 @@ public class AStarSolution {
             initialPos = coordinatesToPos.get(i+":"+j);
             finalPos = coordinatesToPos.get(i+":"+(j+2));
 
-            PushedData temp = new PushedData(board, initialPos+"->"+finalPos,
-                'R',i,j, depth);
+            PushedGameState temp = new PushedGameState(board, initialPos+"->"+finalPos,
+                'R',i,j, setofMoves);
             if(!old_visited.containsKey(serializeBoard(temp.pushed_board)))
               tempList.add(temp);              
           }
@@ -197,8 +196,8 @@ public class AStarSolution {
             initialPos = coordinatesToPos.get(i+":"+j);
             finalPos = coordinatesToPos.get((i+2)+":"+j);
 
-            PushedData temp = new PushedData(board, initialPos+"->"+finalPos,
-                'D',i,j, depth);
+            PushedGameState temp = new PushedGameState(board, initialPos+"->"+finalPos,
+                'D',i,j, setofMoves);
             if(!old_visited.containsKey(serializeBoard(temp.pushed_board)))
               tempList.add(temp);
           }
@@ -209,8 +208,8 @@ public class AStarSolution {
             initialPos = coordinatesToPos.get(i+":"+j);
             finalPos = coordinatesToPos.get(i+":"+(j-2));
 
-            PushedData temp = new PushedData(board, initialPos+"->"+finalPos,
-                'L',i,j, depth);
+            PushedGameState temp = new PushedGameState(board, initialPos+"->"+finalPos,
+                'L',i,j, setofMoves);
             if(!old_visited.containsKey(serializeBoard(temp.pushed_board)))
               tempList.add(temp);
           }
@@ -221,44 +220,44 @@ public class AStarSolution {
             initialPos = coordinatesToPos.get(i+":"+j);
             finalPos = coordinatesToPos.get((i-2)+":"+j);
 
-            PushedData temp = new PushedData(board, initialPos+"->"+finalPos,
-                'U',i,j, depth);
+            PushedGameState temp = new PushedGameState(board, initialPos+"->"+finalPos,
+                'U',i,j, setofMoves);
             if(!old_visited.containsKey(serializeBoard(temp.pushed_board)))
               tempList.add(temp);
           }
           Collections.sort(tempList);
-          for(PushedData pushedData : tempList) {
-            moveStack.push(pushedData);
+          for(PushedGameState PushedGameState : tempList) {
+            moveStack.push(PushedGameState);
           }
           tempList.clear();
         } // j for
       } // i for
+      
       if(gameWon())  {
         gameOver = true;
-        return;
+        return setofMoves;
       }
       old_visited.put(serializeBoard(board), null);
       
-            /*
-      for(PushedData pushedData : tempList) {
-      System.out.println(pushedData.move+": "+pushedData.distance);
-      }
-      System.out.println("**");*/
-      
-      PushedData popped = moveStack.pop();
-
-      //if(winningMove.size()!=0 && depth <= popped.depth)
-      //  winningMove.pop();
-      //winningMove.push(popped.move);
+      PushedGameState popped = moveStack.pop();
+      setofMoves = popped.winningMoves;
       copyBoard(popped);
       move(popped.cordinates_i, popped.cordinates_j, popped.direction);
-      //System.out.println(popped.move);
-
-      depth = popped.depth+1;
+      
+      if(setofMoves =="")
+        setofMoves += popped.move;
+      else
+        setofMoves += ", "+popped.move;
+      if(traceVerbose)  {
+        System.out.println("Next Move: "+ popped.move);
+        System.out.println("Move so far: "+setofMoves);  
+      }
+     
       tempList.clear();
       tempList.removeAll(tempList);
     } while(moveStack.size() !=  0);
-    return;
+    
+    return setofMoves;
   }
   
   String serializeBoard(char[][] board)  {
@@ -271,7 +270,7 @@ public class AStarSolution {
     return str;
   }
 
-  void copyBoard(PushedData data)  {
+  void copyBoard(PushedGameState data)  {
     for(int i=0;i<N;i++)  {
       for(int j=0;j<N;j++)  {
         board[i][j] = data.pushed_board[i][j];
@@ -342,10 +341,12 @@ public class AStarSolution {
     long startTime = System.currentTimeMillis();
     AStarSolution game = new AStarSolution(7, input, args[1]);
     game.displayBoard();
+    String winningSequence ="";
+    
     try {
       System.out.println("*****");
       System.out.println("Intermediate Stack");
-      game.AStar();
+      winningSequence = game.AStar();
       System.out.println("*****");
     }
     catch(Exception e){ e.printStackTrace(); }
@@ -355,7 +356,7 @@ public class AStarSolution {
       System.out.println("\n***RESULT***\nGame Won!");
       System.out.println("Final Board State:");
       game.displayBoard();
-      System.out.println("Winning sequence: "+game.winningMove+"\n");
+      System.out.println("Winning sequence: "+winningSequence+"\n");
     }
     else  {
       System.out.println("\n***RESULT***\nGame Lost!\nSolution doesn't exist");
