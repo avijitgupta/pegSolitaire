@@ -5,6 +5,22 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
 
+/**
+ * DFSIterative is the main class
+ * 1. It contains board matrix and its size (that is 7 here)
+ * 2. It has variables that denote the following state of a pegholder
+ *    filled
+ *    empty
+ *    unusable
+ *    
+ * 3. It has a stack (moveStack) that stores the game state in form of a class object (PushedGameState)
+ *    This stack is used to push/pop (i.e. save/restore) the game state.
+ *    This stack helps us to do a dfs in iteration.
+ * 
+ * 4. We also have a hashmap coordinatestoPos that converts x and y co-ordinates to 
+ *    their respective Peg holder number.
+ * It maps "3:3" string to 16 as 3,3 box in 7*7 matrix points to 16th peg holder
+ */
 public class DFSIterative {
 
   private char [][]board;
@@ -23,7 +39,9 @@ public class DFSIterative {
 
 
   /*
-   * Parse input string in Board data structure
+   * This constructor 
+   *  1. Parses the input string and fills Board data structure
+   *  2. Initializes moveStack and set Mapping of coordinates to Position Hashmap
    */
   public DFSIterative(int n, String input, String verbose) {
     N = n;
@@ -50,63 +68,7 @@ public class DFSIterative {
       if(input.charAt(i)== UNUSABLE)
         check++;
     } 
-  }
-  
-  /*
-   * a helper class to keep track of Stack
-   */
-  private class PushedGameState implements Comparable<PushedGameState>{
-    char [][]pushed_board;
-    String move;
-    int cordinates_i;
-    int cordinates_j;
-    char direction;
-    int distance;
-    String winningMoves;
-
-    public PushedGameState(char [][]board, String Str, 
-        char dir, int matrix_i, int matrix_j, String setOfMoves) {
-
-      pushed_board = new char[N][N];
-      for(int i=0; i<N; i++)  {
-        for(int j=0; j<N; j++)  {
-          pushed_board[i][j] = board[i][j];
-        }
-      }
-      cordinates_i = matrix_i;
-      cordinates_j = matrix_j;
-      direction = dir;
-      move = Str;
-      winningMoves = setOfMoves;
-
-      int final_i =0;
-      int final_j =0;
-
-      if(direction == 'U') {
-        final_i = matrix_i-2; 
-        final_j = matrix_j;
-      }
-      else if(direction == 'D') {
-        final_i = matrix_i+2;
-        final_j = matrix_j;
-      }
-      else if(direction == 'L') {
-        final_i = matrix_i;
-        final_j = matrix_j-2;
-      }
-      else if(direction == 'R') {
-        final_i = matrix_i;
-        final_j = matrix_j+2;
-      }
-
-      distance = DFSIterative.calculateL1Norm(final_i, final_j);
-    }
-
-    @Override
-    public int compareTo(PushedGameState o) {
-      return  o.distance - this.distance;
-    }
-  }
+  }  
 
   /*
    * Form a map between position and board co-ordinates
@@ -130,17 +92,13 @@ public class DFSIterative {
   }
 
   /*
-   * Calculates L1 norm distance (manhatten distance) between current position 
-   * and winning goal position i.e.(3,3 in 7*7 matrix)
-   * e.g 1,6 has ==> abs(3-1)+ abs(3-6) = 5 manhatten distance from goal
-   */
-  static int calculateL1Norm(int i, int j)  {
-    return(Math.abs(N/2 - i) + Math.abs(N/2 - j));
-  }
-
-
-  /*
-   * Move from initialPos to finalPos 
+   * This function executes a move X->Y in a board
+   * where X and Y are peg holders
+   * 
+   * input is co-ordinates of box (as i,j) and direction (d)
+   * e.g. 3,3 in direction 'U' executes an Up move 
+   * for pegholder 16 (represented as 3,3 in 7*7 matrix) to pegholder 4
+   * (16->4)
    */
   void move(int i, int j, char direction) {
     if(direction == 'U')  {
@@ -165,7 +123,55 @@ public class DFSIterative {
     }
     nodeVisited++;
   }
+  
+  /*
+   * A helper class to keep track of Game State
+   * We have a stack of PushedGameState type of object.
+   * It has following data structure:
+   *  -- winningMoves: set of moves that have been executed
+   *  -- pushed_board: the board state after "winningMoves" have been executed
+   *  -- move: the next move to be executed
+   *  -- direction: direction of next Move (Up, Down, Left, Right)
+   */
+  private class PushedGameState {
+    char [][]pushed_board;
+    String move;
+    int cordinates_i;
+    int cordinates_j;
+    char direction;
+    String winningMoves;
 
+    public PushedGameState(char [][]board, String Str, 
+        char dir, int matrix_i, int matrix_j, String setOfMoves) {
+
+      pushed_board = new char[N][N];
+      for(int i=0; i<N; i++)  {
+        for(int j=0; j<N; j++)  {
+          pushed_board[i][j] = board[i][j];
+        }
+      }
+      cordinates_i = matrix_i;
+      cordinates_j = matrix_j;
+      direction = dir;
+      move = Str;
+      winningMoves = setOfMoves;
+      }
+  }
+
+  /*
+   * this call starts the DFS
+   * 1. it iterates in N*N matrix over each peg (as cell in the Board)
+   *   a. looks if a move Up for that peg is possible
+   *   b. if Yes; we store the move in Stack and push Game State (board, move, set of Moves executed so Far) etc. 
+   *   looks if a move Down is possible and again stores the state in Stack
+   *      ...and so on for Left and Right
+   *      
+   * 2. After control comes out of loop; we have all the moves possible for curent board configuration
+   *  in stack.
+   * 3. we pop the first move in stack and execute it;
+   * 4. also we add that move to String in which we keep track of moves executed so far 
+   * 5. then we repeat the process till stack finishes or we run out of moves (gameOver)
+   */
   String DFS() {
 
     int initialPos, finalPos;
@@ -177,8 +183,8 @@ public class DFSIterative {
       tempList.clear();
       for(int i=0;i<N;i++)  {
         for(int j=0;j<N;j++)  {
-
-
+          
+          // Add Right move to stack
           if ( ((j+2)<N) && (board[i][j+1] == FILLED)
               && (board[i][j+2] == EMPTY) && board[i][j] == FILLED)  {
 
@@ -189,7 +195,7 @@ public class DFSIterative {
                 'R',i,j, setofMoves);
             tempList.add(temp);
           }
-
+          // Add Down move to stack
           if ( ((i+2)<N) && (board[i+1][j] == FILLED)
               && (board[i+2][j] == EMPTY) && board[i][j] == FILLED)  {
 
@@ -200,7 +206,7 @@ public class DFSIterative {
                 'D',i,j, setofMoves);
             tempList.add(temp);
           }
-
+          // Add Left move to stack
           if( ((j-2)>=0) && (board[i][j-1] == FILLED)
               && (board[i][j-2] == EMPTY) && board[i][j] == FILLED) {
 
@@ -211,7 +217,7 @@ public class DFSIterative {
                 'L',i,j, setofMoves);
             tempList.add(temp);
           }
-
+          // Add Up move to stack
           if( ((i-2)>=0) && (board[i-1][j] == FILLED) 
               && (board[i-2][j] == EMPTY) && board[i][j] == FILLED)  {
 
@@ -234,8 +240,10 @@ public class DFSIterative {
       for(PushedGameState PushedGameState : tempList) {
         moveStack.push(PushedGameState);
       }
+      // pop first state
       PushedGameState popped = moveStack.pop();
       setofMoves = popped.winningMoves;       
+      // copy stored board config to current board
       copyBoard(popped);
       move(popped.cordinates_i, popped.cordinates_j, popped.direction);
     
@@ -251,6 +259,7 @@ public class DFSIterative {
     return setofMoves;
   }
 
+  /*copies stores board state to current board (kind of restoration process)*/
   void copyBoard(PushedGameState data)  {
     for(int i=0;i<N;i++)  {
       for(int j=0;j<N;j++)  {
@@ -318,6 +327,9 @@ public class DFSIterative {
 
   public static void main(String[] args) {
 
+    if(args.length!=2)  {
+      System.err.println("usage: DFSIterative <filePath> <verbose boolean>");
+    }
     String input = DFSIterative.readFile(args[0]);
     long startTime = System.currentTimeMillis();
     DFSIterative game = new DFSIterative(7, input, args[1]);
